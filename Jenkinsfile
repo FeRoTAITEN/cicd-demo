@@ -38,14 +38,13 @@ pipeline {
             }
         }
 
-        stage('Verify') {
-            steps {
-                sh '''
-                    docker ps
-                    curl http://localhost:8081
-                '''
-            }
-        }
+       stage('Verify') {
+    steps {
+        sh '''
+            docker exec my-nginx-container wget -qO- http://localhost
+        '''
+    }
+}
 
     }
 
