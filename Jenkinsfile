@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "FeRoTAITEN/my-nginx-app"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
+    }
+
     stages {
 
         stage('Checkout') {
@@ -12,7 +17,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
-                    docker build -t FeRoTAITEN/my-nginx-app:${BUILD_NUMBER} .
+                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
                 '''
             }
         }
@@ -21,7 +26,33 @@ pipeline {
             steps {
                 sh '''
                     docker images
-                    docker image inspect my-nginx-app:v1
+                    docker image inspect ${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'docker-hub',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login \
+                        -u "$DOCKER_USER" \
+                        --password-stdin
+                    '''
+                }
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                sh '''
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
                 '''
             }
         }
@@ -30,26 +61,25 @@ pipeline {
             steps {
                 sh '''
                     docker rm -f my-nginx-container || true
+
                     docker run -d \
                         --name my-nginx-container \
                         -p 8081:80 \
-                        my-nginx-app:v1
+                        ${IMAGE_NAME}:${IMAGE_TAG}
                 '''
             }
         }
 
-       stage('Verify') {
-    steps {
-        sh '''
-            docker exec my-nginx-container wget -qO- http://localhost
-        '''
-    }
-}
-
+        stage('Verify') {
+            steps {
+                sh '''
+                    docker exec my-nginx-container wget -qO- http://localhost
+                '''
+            }
+        }
     }
 
     post {
-
         success {
             echo '✅ Pipeline completed successfully.'
         }
@@ -61,6 +91,5 @@ pipeline {
         always {
             echo 'Pipeline finished.'
         }
-
     }
 }
