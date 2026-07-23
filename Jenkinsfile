@@ -12,7 +12,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
-                    docker build -t my-nginx-app:v1 .
+                    docker build -t FeRoTAITEN/my-nginx-app:${BUILD_NUMBER} .
                 '''
             }
         }
